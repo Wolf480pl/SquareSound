@@ -4,20 +4,21 @@ import javax.sound.sampled.*;
  
 public class Square {
 	
-	double c1,c2,c4,c5,c6,c7,c8,c9 = 1.1;
-	double c3 = 1.5;
-	double controls[] = {c1,c2,c3,c4,c5,c6,c7,c8,c9};
-	double stop = 0.00004;	//0,4ms stop signal
-	double all = 0.0225; 	//22,5ms (control signals + stop signals + flat signal)
-	
    //This is just an example - you would want to handle LineUnavailable properly...
    public static void main(String[] args) throws InterruptedException, LineUnavailableException
    {
-      final int SAMPLING_RATE = 44100;            	// Audio sampling rate
-      final int SAMPLE_SIZE = 2;          	  		// Audio sample size in bytes
+	  
+	  double c1=0.0011, c2=0.0011, c4=0.0011, c5=0.0011, c6=0.0011, c7=0.0011, c8=0.0011; //time in s per channel
+	  double c3 = 0.0015;
+	  double controls[] = {c1,c2,c3,c4,c5,c6,c7,c8};
+	  double stop = 0.00004;	//0,4ms stop signal
+	  double all = 0.0225; 	//22,5ms (control signals + stop signals + flat signal)
+	  
+      final int SAMPLING_RATE = 44100;            // Audio sampling rate
+      final int SAMPLE_SIZE = 2;          	      // Audio sample size in bytes
  
       SourceDataLine line;
-      double fFreq = 10000;                         // Frequency of sine wave in hz
+      double fFreq = 10000;                       // Frequency of sine wave in hz
  
       //Position through the sine wave as a percentage (i.e. 0 to 1 is 0 to 2*PI)
       double fCyclePosition = 0;
@@ -39,7 +40,7 @@ public class Square {
       // Make our buffer size match audio system's buffer
       ByteBuffer cBuf = ByteBuffer.allocate(line.getBufferSize());  
  
-      int ctSamplesTotal = SAMPLING_RATE*5;         // Output for roughly 5 seconds
+      int ctSamplesTotal = SAMPLING_RATE*5;       // Output for roughly 5 seconds
  
  
       //On each pass main loop fills the available free space in the audio buffer
@@ -49,15 +50,20 @@ public class Square {
          double fCycleInc = fFreq/SAMPLING_RATE;  // Fraction of cycle between samples
  
          cBuf.clear();                            // Discard samples from previous pass
- 
+
           // Figure out how many samples we can add
          int ctSamplesThisPass = line.available()/SAMPLE_SIZE;  
          for (int i=0; i < ctSamplesThisPass; i++) {
-            cBuf.putShort((short)(Short.MAX_VALUE * Math.sin(2*Math.PI * fCyclePosition)));
+           
+        	 for (int counter=0; counter<controls.length;counter++){
+        		 cBuf.putShort((short)(((fCycleInc*controls[counter])%2) - ((fCycleInc*controls[counter])%1)));
+        	 }
+        
+        	/*cBuf.putShort((short)(Short.MAX_VALUE * Math.sin(2*Math.PI * fCyclePosition)));  <---The original version, for sine waves.
  
             fCyclePosition += fCycleInc;
             if (fCyclePosition > 1)
-               fCyclePosition -= 1;
+               fCyclePosition -= 1; */
          }
  
          //Write sine samples to the line buffer.  If the audio buffer is full, this will
