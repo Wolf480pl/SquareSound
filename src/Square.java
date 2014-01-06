@@ -1,85 +1,108 @@
 import java.nio.ByteBuffer;
 import javax.sound.sampled.*;
- 
- 
-public class Square {
-	
-   //This is just an example - you would want to handle LineUnavailable properly...
-   public static void main(String[] args) throws InterruptedException, LineUnavailableException
-   {
-	  
-	  double c1=0.0011, c2=0.0011, c4=0.0011, c5=0.0011, c6=0.0011, c7=0.0011, c8=0.0011; //time in s per channel
-	  double c3 = 0.0015;
-	  double controls[] = {c1,c2,c3,c4,c5,c6,c7,c8};
-	  double stop = 0.00004;	//0,4ms stop signal
-	  double all = 0.0225; 	//22,5ms (control signals + stop signals + flat signal)
-	  
-      final int SAMPLING_RATE = 44100;            // Audio sampling rate
-      final int SAMPLE_SIZE = 2;          	      // Audio sample size in bytes
- 
-      SourceDataLine line;
-      double fFreq = 10000;                       // Frequency of sine wave in hz
- 
-      //Position through the sine wave as a percentage (i.e. 0 to 1 is 0 to 2*PI)
-      double fCyclePosition = 0;
- 
-      //Open up audio output, using 44100hz sampling rate, 16 bit samples, mono, and big
-      // endian byte ordering
-      AudioFormat format = new AudioFormat(SAMPLING_RATE, 16, 1, true, true);
-      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
- 
-      if (!AudioSystem.isLineSupported(info)){
-         System.out.println("Line matching " + info + " is not supported.");
-         throw new LineUnavailableException();
-      }
- 
-      line = (SourceDataLine)AudioSystem.getLine(info);
-      line.open(format);  
-      line.start();
- 
-      // Make our buffer size match audio system's buffer
-      ByteBuffer cBuf = ByteBuffer.allocate(line.getBufferSize());  
- 
-      int ctSamplesTotal = SAMPLING_RATE*5;       // Output for roughly 5 seconds
- 
- 
-      //On each pass main loop fills the available free space in the audio buffer
-      //Main loop creates audio samples for sine wave, runs until we tell the thread to exit
-      //Each sample is spaced 1/SAMPLING_RATE apart in time
-      while (ctSamplesTotal>0) {
-         double fCycleInc = fFreq/SAMPLING_RATE;  // Fraction of cycle between samples
- 
-         cBuf.clear();                            // Discard samples from previous pass
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
-          // Figure out how many samples we can add
-         int ctSamplesThisPass = line.available()/SAMPLE_SIZE;  
-         for (int i=0; i < ctSamplesThisPass; i++) {
-           
-        	 for (int counter=0; counter<controls.length;counter++){
-        		 cBuf.putShort((short)(((fCycleInc*controls[counter])%2) - ((fCycleInc*controls[counter])%1)));
-        	 }
-        
-        	/*cBuf.putShort((short)(Short.MAX_VALUE * Math.sin(2*Math.PI * fCyclePosition)));  <---The original version, for sine waves.
- 
-            fCyclePosition += fCycleInc;
-            if (fCyclePosition > 1)
-               fCyclePosition -= 1; */
-         }
- 
-         //Write sine samples to the line buffer.  If the audio buffer is full, this will
-         // block until there is room (we never write more samples than buffer will hold)
-         line.write(cBuf.array(), 0, cBuf.position());            
-         ctSamplesTotal -= ctSamplesThisPass;     // Update total number of samples written
- 
-         //Wait until the buffer is at least half empty  before we add more
-         while (line.getBufferSize()/2 < line.available())  
-            Thread.sleep(1);                                            
-      }
- 
- 
-      //Done playing the whole waveform, now wait until the queued samples finish
-      //playing, then clean up and exit
-      line.drain();                                        
-      line.close();
-   }
+abstract class Square{
+
+	public static final double FRAME_TIME_MS = 22.5;
+	public static final int SAMPLING_RATE = 44100;
+	public static final int SAMPLE_SIZE = 2;
+	public static final double SAMPLE_TIME_MS = 1000.0 / SAMPLING_RATE;
+
+	private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011};
+	private boolean stop = false;
+	private Thread playThread;
+
+	public List<Double> buildFrame(double channels[]) {
+		double dataLength = 0;
+		List<Double> frame = new ArrayList<Double>(2 * (channels.length + 1));
+		for (double chan : channels) {
+			frame.add(0.4);
+			frame.add(chan);
+			dataLength += 0.4 + chan;
+		}
+		frame.add(0.4);
+		dataLength += 0.4;
+		frame.add(0, FRAME_TIME_MS - dataLength); // Add the padding at the beginning.
+		return frame;
 }
+
+public void playForever(SourceDataLine line) {
+    // Assume the line passed in argument is already open and started
+   
+    ByteBuffer cBuf = ByteBuffer.allocate(line.getBufferSize());
+  
+    List<Double> frame = buildFrame(this.channels);
+    Iterator<Double> itr = frame.iterator();
+    double nextChange = itr.next();
+    byte y = 0; // Start with "flat" padding
+    double time = 0;
+    while(!stop) {
+        cBuf.clear();
+        int samplesThisPass = line.available() / SAMPLE_SIZE;
+        for (int i = 0; i < samplesThisPass; ++i) {
+            cBuf.putShort((short)(Short.MAX_VALUE * y));
+            time += SAMPLE_TIME_MS;
+            if (time >= nextChange) {
+                if (itr.hasNext()) {
+                    nextChange += itr.next();
+                    if (y == 0) {
+                        // Padding ends, now goes LOW.
+                        y = -1;
+                    } else {
+                        y = (byte) -y;
+                    }
+                } else {
+                    // Next frame
+                    frame = buildFrame(this.channels); // In case the channels have been updated;
+                    itr = frame.iterator();
+                    time -= nextChange;
+                    nextChange = 0;
+                    y = 0;
+                }
+            }
+        }
+        // Write samples to the line buffer.
+        line.write(cBuf.array(), 0, cBuf.position());
+       
+        //Wait until the buffer is at least half empty  before we add more
+        while (line.getBufferSize()/2 < line.available()) {
+            Thread.sleep(1);
+        }
+    }
+  
+    line.drain();
+    line.close();
+}
+
+public void start() {
+    final SourceDataLine line = setupLine();
+    stop = false;
+    Thread playThrad = new Thread(){
+        @Override
+        public void run() {
+            playForever(line);
+        }
+    };
+    playThrad.start();
+}
+
+public void stop() {
+    stop = true;
+}
+
+public void stopAndWait() {
+    stop = true;
+    if (playThread != null) {
+        playThread.join(); // Wait for it to finish.
+    }
+}
+
+public void setChannel(int chan, double time) {
+    //TODO: Check if the chan and time are not too big and not too small
+    channels[chan] = time;
+}
+
+public abstract SourceDataLine setupLine(); //TODO implement it and remove "abstract" keyword
