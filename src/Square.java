@@ -105,4 +105,18 @@ public void setChannel(int chan, double time) {
     channels[chan] = time;
 }
 
-public abstract SourceDataLine setupLine(); //TODO implement it and remove "abstract" keyword
+public SourceDataLine setupLine() {
+     SourceDataLine line;
+      AudioFormat format = new AudioFormat(SAMPLING_RATE, 16, 1, true, true);
+      DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+
+      if (!AudioSystem.isLineSupported(info)){
+         System.out.println("Line matching " + info + " is not supported.");
+         throw new LineUnavailableException();
+      }
+
+      line = (SourceDataLine)AudioSystem.getLine(info);
+      line.open(format);  
+      line.start();
+      return line;
+}
