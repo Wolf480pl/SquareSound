@@ -1,5 +1,7 @@
 import java.nio.ByteBuffer;
+
 import javax.sound.sampled.*;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -11,9 +13,13 @@ abstract class Square{
     public static final int SAMPLE_SIZE = 2;
     public static final double SAMPLE_TIME_MS = 1000.0 / SAMPLING_RATE;
 
-    private double channels[] = {0.0015, 0.0015, 0.0015, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011};
+    private double channels[] = {0.0010, 0.0009, 0.0009, 0.0009, 0.0009, 0.0011, 0.0011, 0.0011};
     private boolean stop = false;
     private Thread playThread;
+    
+    public static void main(String args[]){
+    	
+    }
     
     public List<Double> buildFrame(double channels[]) {
             double dataLength = 0;
@@ -32,7 +38,7 @@ abstract class Square{
      		}
         
        
-    public void playForever(SourceDataLine line) {
+    public void playForever(SourceDataLine line) throws InterruptedException {
     // Assume the line passed in argument is already open and started
    
     	ByteBuffer cBuf = ByteBuffer.allocate(line.getBufferSize());
@@ -83,13 +89,18 @@ abstract class Square{
     	line.close();
     }
 
-    public void start() {
+    
+    public void start() throws LineUnavailableException {
     	final SourceDataLine line = setupLine();
     	stop = false;
     	Thread playThrad = new Thread(){
     		@Override
     		public void run() {
-				playForever(line);
+				try {
+					playForever(line);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
     		}
     	};
     	playThrad.start();
@@ -99,19 +110,22 @@ abstract class Square{
     	stop = true;
     }
 
-    public void stopAndWait() {
+    
+    public void stopAndWait() throws InterruptedException {
     	stop = true;
     	if (playThread != null) {
     		playThread.join(); // Wait for it to finish.
     	}
     }
 
+    
     public void setChannel(int chan, double time) {
     	//TODO: Check if the chan and time are not too big and not too small
     	channels[chan] = time;
     }
 
-    public SourceDataLine setupLine() {
+    
+    public SourceDataLine setupLine() throws LineUnavailableException {
     	SourceDataLine line;
     	AudioFormat format = new AudioFormat(SAMPLING_RATE, 16, 1, true, true);
     	DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
