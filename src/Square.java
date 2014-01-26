@@ -6,36 +6,36 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-abstract class Square{
+class Square{
 	
     public static final double FRAME_TIME_MS = 22.5;
     public static final int SAMPLING_RATE = 44100;
     public static final int SAMPLE_SIZE = 2;
     public static final double SAMPLE_TIME_MS = 1000.0 / SAMPLING_RATE;
 
-    private double channels[] = {0.0010, 0.0009, 0.0009, 0.0009, 0.0009, 0.0011, 0.0011, 0.0011};
+    private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011}; //Or 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 ?
     private boolean stop = false;
     private Thread playThread;
     
-    public static void main(String args[]){
-    	
+    public static void main(String args[]) throws LineUnavailableException{
+    	 new Square().start();
     }
     
     public List<Double> buildFrame(double channels[]) {
-            double dataLength = 0;
-            List<Double> frame = new ArrayList<Double>(2 * (channels.length + 1));
+        double dataLength = 0;
+        List<Double> frame = new ArrayList<Double>(2 * (channels.length + 1));
             
-            for (double chan : channels) {
-                frame.add(0.4);
-                frame.add(chan);
-                dataLength += 0.4 + chan;
-            	}
-            
+        for (double chan : channels) {
             frame.add(0.4);
-            dataLength += 0.4;
-            frame.add(0, FRAME_TIME_MS - dataLength); // Add the padding at the beginning.
-            return frame;
-     		}
+            frame.add(chan);
+            dataLength += 0.4 + chan;
+        	}
+            
+        frame.add(0.4);
+        dataLength += 0.4;
+        frame.add(0, FRAME_TIME_MS - dataLength); // Add the padding at the beginning.
+        return frame;
+     	}
         
        
     public void playForever(SourceDataLine line) throws InterruptedException {
