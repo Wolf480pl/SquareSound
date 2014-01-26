@@ -8,12 +8,12 @@ import java.util.List;
 
 class Square{
 	
-    public static final double FRAME_TIME_MS = 22.5;
+    public static final double FRAME_TIME_MS = 0.0225;
     public static final int SAMPLING_RATE = 44100;
     public static final int SAMPLE_SIZE = 2;
     public static final double SAMPLE_TIME_MS = 1000.0 / SAMPLING_RATE;
 
-    private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011}; //Or 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 ?
+    private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011};
     private boolean stop = false;
     private Thread playThread;
     
@@ -26,13 +26,13 @@ class Square{
         List<Double> frame = new ArrayList<Double>(2 * (channels.length + 1));
             
         for (double chan : channels) {
-            frame.add(0.4);
+            frame.add(0.0004);
             frame.add(chan);
-            dataLength += 0.4 + chan;
+            dataLength += 0.0004 + chan;
         	}
             
-        frame.add(0.4);
-        dataLength += 0.4;
+        frame.add(0.0004);
+        dataLength += 0.0004;
         frame.add(0, FRAME_TIME_MS - dataLength); // Add the padding at the beginning.
         return frame;
      	}
