@@ -16,7 +16,8 @@ class Square {
     public static final int SAMPLE_SIZE = 2;
     public static final double SAMPLE_TIME_MS = 1000.0 / SAMPLING_RATE;
 
-    private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011}; //Or 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 ?
+    // private double channels[] = {0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011, 0.0011}; //Or 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 ?
+    private double channels[] = { 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1 };
     private boolean stop = false;
     private Thread playThread;
 
@@ -71,7 +72,9 @@ class Square {
                         frame = buildFrame(this.channels); // In case the channels have been updated;
                         itr = frame.iterator();
                         time -= nextChange;
-                        nextChange = 0;
+                        // nextChange = 0;
+                        // nextChange += itr.next();
+                        nextChange = itr.next();
                         y = 0;
                     }
                 }
